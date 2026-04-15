@@ -1,3 +1,19 @@
+#!/bin/bash
+
+# Apply WiFi connection fixes to ESP32-C3 Climate Sensor
+
+echo "Applying WiFi connection fixes..."
+
+# 1. Update config_climate.h to change GPIO from 2 to 4
+sed -i 's/#define CONFIG_BUTTON_PIN 2/#define CONFIG_BUTTON_PIN 4/' config_climate.h
+echo "✓ Changed CONFIG_BUTTON_PIN from GPIO 2 to GPIO 4"
+
+# 2. Create a backup of the original file
+cp esp32_climate.ino esp32_climate.ino.backup
+
+# 3. Apply the fixes to the main file
+# We'll create a new file with the fixes
+cat > esp32_climate_fixed.ino << 'EOF'
 /*
   ESP32-C3 Climate Sensor with Web Interface
   Starts in AP mode for WiFi configuration
@@ -34,7 +50,7 @@ unsigned long lastReadingTime = 0;
 bool wifiConnected = false;
 bool apMode = false;
 
-// WiFi reconnection state (NEW)
+// WiFi reconnection state
 unsigned long lastConnectionAttempt = 0;
 int connectionRetryCount = 0;
 const unsigned long MIN_RECONNECT_INTERVAL = 30000; // 30 seconds between reconnection attempts
@@ -68,13 +84,13 @@ void connectToWiFi() {
     return;
   }
   
-  // Check if we should attempt reconnection (NEW)
+  // Check if we should attempt reconnection
   unsigned long now = millis();
   if (connectionRetryCount > 0 && (now - lastConnectionAttempt) < MIN_RECONNECT_INTERVAL) {
     return; // Too soon to retry
   }
   
-  // After too many failures, fall back to AP mode (NEW)
+  // After too many failures, fall back to AP mode
   if (connectionRetryCount >= MAX_CONNECTION_RETRIES) {
     Serial.println("Too many connection failures, falling back to AP mode");
     if (!apMode) {
@@ -93,30 +109,30 @@ void connectToWiFi() {
   Serial.print("): ");
   Serial.println(wifiSSID);
   
-  // Disconnect first to ensure clean state (NEW)
+  // Disconnect first to ensure clean state
   WiFi.disconnect(true);
   delay(100);
   
   WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
   
-  // Try for up to 30 seconds (60 * 500ms) - increased from 15 seconds
+  // Try for up to 30 seconds (60 * 500ms)
   for (int i = 0; i < 60; i++) {
     if (WiFi.status() == WL_CONNECTED) {
       wifiConnected = true;
-      connectionRetryCount = 0; // Reset on success (NEW)
+      connectionRetryCount = 0; // Reset on success
       Serial.print("Connected! IP: ");
       Serial.println(WiFi.localIP());
       return;
     }
     delay(500);
-    if (i % 10 == 0) Serial.print("."); // Less verbose output
+    if (i % 10 == 0) Serial.print(".");
   }
   
   wifiConnected = false;
   Serial.println("\nFailed to connect");
   
   // If this was the first attempt and it failed immediately, 
-  // check if credentials might be wrong or network unavailable (NEW)
+  // check if credentials might be wrong or network unavailable
   if (connectionRetryCount == 1) {
     Serial.println("First connection attempt failed. Possible issues:");
     Serial.println("1. WiFi credentials incorrect");
@@ -330,23 +346,4 @@ void handleScanNetworks() {
       
       // Escape special characters in SSID for JSON
       ssid.replace("\\", "\\\\");
-      ssid.replace("\"", "\\\"");
-      
-      jsonResponse += "{\"ssid\":\"" + ssid + "\",\"rssi\":" + String(rssi) + "}";
-      
-      #ifdef DEBUG_MODE
-      Serial.print("  - ");
-      Serial.print(ssid);
-      Serial.print(" (RSSI: ");
-      Serial.print(rssi);
-      Serial.println(" dBm)");
-      #endif
-    }
-    
-    jsonResponse += "]}";
-    
-    // Delete scan results to free memory
-    WiFi.scanDelete();
-  }
-  
-  server.send(200, "application/json", jsonResponse);
+      ssid.replace("\"", "\\
