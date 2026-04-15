@@ -1,0 +1,59 @@
+# Required Libraries for ESP32-C3 Climate Sensor
+
+## Core Libraries (included with Arduino ESP32)
+- WiFi
+- WebServer
+- DNSServer
+- HTTPClient
+- Preferences
+
+## Additional Libraries (install via Library Manager)
+
+### ArduinoJson
+- Library: ArduinoJson by Benoit Blanchon
+- Version: 6.x or later
+- Purpose: JSON serialization/deserialization for API responses
+
+### DHT sensor library
+- Library: DHT sensor library by Adafruit
+- Version: 1.4.x or later
+- Purpose: Read temperature and humidity from DHT22 sensor
+
+### Adafruit Unified Sensor
+- Library: Adafruit Unified Sensor by Adafruit
+- Version: 1.1.x or later
+- Purpose: Dependency for DHT sensor library
+
+## Installation Instructions
+
+### Using Arduino IDE Library Manager:
+1. Open Arduino IDE
+2. Go to Sketch > Include Library > Manage Libraries...
+3. Search for and install:
+   - "ArduinoJson" by Benoit Blanchon
+   - "DHT sensor library" by Adafruit
+   - "Adafruit Unified Sensor" by Adafruit
+
+### Using PlatformIO:
+Add to platformio.ini:
+```ini
+lib_deps = 
+    bblanchon/ArduinoJson@^6.21.3
+    adafruit/DHT sensor library@^1.4.4
+    adafruit/Adafruit Unified Sensor@^1.1.6
+```
+
+## Library Documentation
+
+### ArduinoJson
+- GitHub: https://github.com/bblanchon/ArduinoJson
+- Documentation: https://arduinojson.org/
+
+### DHT sensor library
+- GitHub: https://github.com/adafruit/DHT-sensor-library
+- Documentation: https://learn.adafruit.com/dht
+
+## Notes
+- Make sure to install the correct versions to avoid compatibility issues
+- The DHT library requires the Adafruit Unified Sensor library as a dependency
+- ArduinoJson version 6 is recommended for better memory efficiency
