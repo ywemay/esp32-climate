@@ -8,7 +8,7 @@
 // GPIO Configuration
 #define CONFIG_BUTTON_PIN 2  // GPIO pin for AP mode trigger (connect to 3.3V for AP mode)
 #define DHT_PIN 5            // GPIO pin for DHT22 sensor data
-#define DHT_TYPE DHT22       // DHT sensor type (DHT11, DHT22, DHT21)
+#define DHT_TYPE DHT11       // DHT sensor type (DHT11, DHT22, DHT21)
 
 // Default Values (used when NVS is empty)
 #define DEFAULT_READING_INTERVAL 30  // Default sensor reading interval in seconds (5-3600)
