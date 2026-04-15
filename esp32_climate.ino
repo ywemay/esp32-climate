@@ -1,6 +1,7 @@
 /*
   ESP32-C3 Climate Sensor with Web Interface
   Starts in AP mode for WiFi configuration
+  Features WiFi network scanning for easy setup
 */
 
 #include <WiFi.h>
@@ -139,18 +140,69 @@ void handleRoot() {
 
 void handleConfig() {
   String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'><title>Configuration</title>";
-  html += "<style>body{font-family:Arial;max-width:600px;margin:20px auto;padding:20px;}</style></head><body>";
+  html += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+  html += "<style>body{font-family:Arial;max-width:600px;margin:20px auto;padding:20px;}";
+  html += "input,select{width:100%;padding:8px;margin:5px 0 15px 0;border:1px solid #ddd;border-radius:4px;box-sizing:border-box;}";
+  html += "button{background:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;width:100%;font-size:16px;}";
+  html += "button:hover{background:#45a049;} button:disabled{background:#ccc;}";
+  html += ".section{margin-bottom:20px;padding:15px;border:1px solid #ddd;border-radius:4px;}";
+  html += ".section h2{margin-top:0;color:#555;}";
+  html += ".signal-bars{display:inline-block;width:60px;vertical-align:middle;margin-left:10px;}";
+  html += ".bar{height:4px;margin:1px;background:#ddd;border-radius:1px;display:inline-block;}";
+  html += ".bar.filled{background:#4CAF50;}";
+  html += "#scanStatus{margin:5px 0;font-size:14px;}";
+  html += ".scanning{color:#2196F3;} .success{color:#4CAF50;} .error{color:#dc3545;}";
+  html += "</style></head><body>";
+  
   html += "<h1>⚙️ Configuration</h1>";
   html += "<form method='POST' action='/save'>";
-  html += "<label>WiFi SSID:</label><br><input type='text' name='ssid' value='" + wifiSSID + "' style='width:100%;padding:8px;margin:5px 0 15px 0;'><br>";
-  html += "<label>WiFi Password:</label><br><input type='password' name='password' value='" + wifiPassword + "' style='width:100%;padding:8px;margin:5px 0 15px 0;'><br>";
-  html += "<label>Temperature Offset (°C):</label><br><input type='number' name='tempOffset' value='" + String(temperatureOffset, 1) + "' step='0.1' style='width:100%;padding:8px;margin:5px 0 15px 0;'><br>";
-  html += "<label>Humidity Offset (%):</label><br><input type='number' name='humidityOffset' value='" + String(humidityOffset, 1) + "' step='0.1' style='width:100%;padding:8px;margin:5px 0 15px 0;'><br>";
-  html += "<label>Reading Interval (seconds):</label><br><input type='number' name='readingInterval' value='" + String(readingInterval) + "' min='5' max='3600' style='width:100%;padding:8px;margin:5px 0 15px 0;'><br>";
-  html += "<button type='submit' style='background:#4CAF50;color:white;padding:15px;width:100%;border:none;border-radius:4px;font-size:16px;'>💾 Save</button>";
+  
+  // WiFi Section with Scanning
+  html += "<div class='section'><h2>📶 WiFi Configuration</h2>";
+  html += "<label>WiFi SSID:</label>";
+  html += "<input type='text' id='wifiSSID' name='ssid' value='" + wifiSSID + "' required>";
+  
+  html += "<label>Or select from scanned networks:</label>";
+  html += "<select id='networkSelect' onchange='selectNetwork()'><option value=''>-- Scan for networks --</option></select>";
+  
+  html += "<button type='button' id='scanBtn' onclick='scanNetworks()' style='margin:10px 0;background:#2196F3;'>📡 Scan Networks</button>";
+  html += "<div id='scanStatus'></div>";
+  html += "<small>Manual entry still works for hidden networks</small>";
+  
+  html += "<label>WiFi Password:</label>";
+  html += "<input type='password' name='password' value='" + wifiPassword + "'>";
+  html += "</div>";
+  
+  // Sensor Calibration
+  html += "<div class='section'><h2>⚖️ Sensor Calibration</h2>";
+  html += "<label>Temperature Offset (°C):</label>";
+  html += "<input type='number' name='tempOffset' value='" + String(temperatureOffset, 1) + "' step='0.1'>";
+  html += "<label>Humidity Offset (%):</label>";
+  html += "<input type='number' name='humidityOffset' value='" + String(humidityOffset, 1) + "' step='0.1'>";
+  html += "</div>";
+  
+  // Sensor Settings
+  html += "<div class='section'><h2>⚙️ Sensor Settings</h2>";
+  html += "<label>Reading Interval (seconds):</label>";
+  html += "<input type='number' name='readingInterval' value='" + String(readingInterval) + "' min='5' max='3600'>";
+  html += "</div>";
+  
+  html += "<button type='submit'>💾 Save Configuration</button>";
   html += "</form>";
+  
   html += "<hr><a href='/' style='display:block;text-align:center;color:#2196F3;'>← Back to Home</a>";
+  
+  // Add JavaScript for network scanning
+  String js = "<script>";
+  js += "function scanNetworks(){var btn=document.getElementById('scanBtn');var status=document.getElementById('scanStatus');var select=document.getElementById('networkSelect');btn.disabled=true;btn.innerHTML='⏳ Scanning...';status.className='scanning';status.innerHTML='Scanning...';select.innerHTML='<option>Loading...</option>';";
+  js += "fetch('/scan-networks').then(function(r){return r.json();}).then(function(data){btn.disabled=false;btn.innerHTML='📡 Scan Networks';if(data.networks&&data.networks.length>0){select.innerHTML='<option value=\"\">-- Select --</option>';for(var i=0;i<data.networks.length;i++){var n=data.networks[i];var ssid=n.ssid||'(Hidden)';var bars=getSignalBars(n.rssi);var opt=document.createElement('option');opt.value=ssid;opt.innerHTML=ssid+' '+bars;select.appendChild(opt);}status.className='success';status.innerHTML='Found '+data.networks.length+' networks';}else{select.innerHTML='<option>No networks</option>';status.className='error';status.innerHTML='No networks found';}}).catch(function(e){btn.disabled=false;btn.innerHTML='📡 Scan';status.className='error';status.innerHTML='Scan failed';select.innerHTML='<option>Error</option>';});}";
+  js += "function getSignalBars(rssi){var bars='';var filled=rssi>=-50?4:(rssi>=-60?3:(rssi>=-70?2:(rssi>=-80?1:0)));for(var i=0;i<4;i++){var cls=i<filled?'filled':'';bars+='<div class=\"bar '+cls+'\"></div>';}return '<div class=\"signal-bars\">'+bars+'</div>';}";
+  js += "function selectNetwork(){var select=document.getElementById('networkSelect');var ssidInput=document.getElementById('wifiSSID');if(select.value){ssidInput.value=select.value;}}";
+  js += "</script>";
+  
+  html += js;
   html += "</body></html>";
+  
   server.send(200, "text/html", html);
 }
 
@@ -181,12 +233,87 @@ void handleSensorData() {
   server.send(200, "application/json", json);
 }
 
+void handleScanNetworks() {
+  #ifdef DEBUG_MODE
+  Serial.println("Scanning for WiFi networks...");
+  #endif
+  
+  // Start scan
+  int n = WiFi.scanNetworks();
+  
+  String jsonResponse = "{\"networks\":[";
+  
+  if (n == 0) {
+    #ifdef DEBUG_MODE
+    Serial.println("No networks found");
+    #endif
+    jsonResponse += "]}";
+  } else {
+    #ifdef DEBUG_MODE
+    Serial.print(n);
+    Serial.println(" networks found");
+    #endif
+    
+    // Create array to sort by RSSI
+    int indices[n];
+    for (int i = 0; i < n; i++) {
+      indices[i] = i;
+    }
+    
+    // Sort by RSSI (strongest first)
+    for (int i = 0; i < n; i++) {
+      for (int j = i + 1; j < n; j++) {
+        if (WiFi.RSSI(indices[j]) > WiFi.RSSI(indices[i])) {
+          int temp = indices[i];
+          indices[i] = indices[j];
+          indices[j] = temp;
+        }
+      }
+    }
+    
+    // Build JSON response
+    bool first = true;
+    for (int i = 0; i < n; i++) {
+      int idx = indices[i];
+      if (!first) {
+        jsonResponse += ",";
+      }
+      first = false;
+      
+      String ssid = WiFi.SSID(idx);
+      int rssi = WiFi.RSSI(idx);
+      
+      // Escape special characters in SSID for JSON
+      ssid.replace("\\", "\\\\");
+      ssid.replace("\"", "\\\"");
+      
+      jsonResponse += "{\"ssid\":\"" + ssid + "\",\"rssi\":" + String(rssi) + "}";
+      
+      #ifdef DEBUG_MODE
+      Serial.print("  - ");
+      Serial.print(ssid);
+      Serial.print(" (RSSI: ");
+      Serial.print(rssi);
+      Serial.println(" dBm)");
+      #endif
+    }
+    
+    jsonResponse += "]}";
+    
+    // Delete scan results to free memory
+    WiFi.scanDelete();
+  }
+  
+  server.send(200, "application/json", jsonResponse);
+}
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
   
   Serial.println("\nESP32-C3 Climate Sensor");
   Serial.println("========================");
+  Serial.println("Version 1.1 - With WiFi Scanning");
   
   pinMode(CONFIG_BUTTON_PIN, INPUT_PULLDOWN);
   dht.begin();
@@ -209,6 +336,7 @@ void setup() {
   server.on("/config", handleConfig);
   server.on("/save", HTTP_POST, handleSave);
   server.on("/api/sensor", handleSensorData);
+  server.on("/scan-networks", HTTP_GET, handleScanNetworks);
   server.begin();
   Serial.println("Web server started");
   
